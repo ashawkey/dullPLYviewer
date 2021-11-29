@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - PLY</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	</head>
+	<body>
+
+		<script type="module">
+
+            import * as THREE from 'https://cdn.skypack.dev/three@0.135.0';
+            import Stats from 'https://cdn.skypack.dev/three@0.135.0/examples/jsm/libs/stats.module.js';
+            import { PLYLoader } from 'https://cdn.skypack.dev/three@0.135.0/examples/jsm/loaders/PLYLoader.js';
+			import { OrbitControls } from 'https://cdn.skypack.dev/three@0.135.0/examples/jsm/controls/OrbitControls.js';
+
+			let container, stats;
+
+			let camera, cameraTarget, scene, renderer, controls;
+
+			init();
+			animate();
+			
+			function post_load_ply (type, color=0x888888) {
+				if (type === "points_colored") {
+					return (geometry) => {
+						const material = new THREE.PointsMaterial( { vertexColors: true, size: 0.02 } ); // enable vertex color from ply.
+						const points = new THREE.Points( geometry, material );
+						scene.add( points );
+					}
+				} else if (type === "points") {
+					return (geometry) => {
+						const material = new THREE.PointsMaterial( { color: 0x000000, size: 0.02 } ); // use default color.
+						const points = new THREE.Points( geometry, material );
+						scene.add( points );
+					}
+				} else if (type === "mesh") {
+					return (geometry) => {
+						//const material = new THREE.MeshPhongMaterial( { color: color, side: THREE.DoubleSide } ); // use default color.
+						//const material = new THREE.MeshPhongMaterial( { color: color, flatShading: true, vertexColors: THREE.VertexColors, side: THREE.DoubleSide} ); // enable vertex color from ply.
+						const material = new THREE.MeshPhongMaterial( {flatShading: true, color: 0x00000, specular: 0xffffff, shininess: 30, side: THREE.DoubleSide} );
+						
+						const mesh = new THREE.Mesh( geometry, material );
+
+						
+						// custom scale
+						mesh.scale.multiply(new THREE.Vector3(0.05, 0.05, 0.05));
+
+						// custom center
+						//mesh.position.x = 0;
+						//mesh.position.y = 0;
+						mesh.position.z = -0.5;
+						
+						// rendering effect
+						// mesh.castShadow = false;
+						// mesh.receiveShadow = false;
+
+						scene.add( mesh );
+					}
+				} else {
+					console.error("Unknown type: " + type);
+				}
+			}
+
+
+			function init() {
+
+				container = document.createElement( 'div' );
+				document.body.appendChild( container );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 100 );
+				camera.position.set( 5, 10, 0 );
+				camera.up.set(0, 0, 1);
+				
+				scene = new THREE.Scene();
+				scene.background = new THREE.Color( 0xffffff );
+				
+				// PLY file
+
+				const loader = new PLYLoader();
+				loader.load( './mesh.ply', post_load_ply("mesh") );
+
+				// Lights
+
+				scene.add( new THREE.HemisphereLight( 0xffffff, 0xffffff ) );
+
+				addShadowedLight( 1, 1, 1, 0x777777, 1.35 );
+				addShadowedLight( -1, -1, - 1, 0x777777, 1 );
+
+				// renderer
+
+				renderer = new THREE.WebGLRenderer( { antialias: true } );
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				//renderer.outputEncoding = THREE.sRGBEncoding; // whether do gamma correction
+
+				renderer.shadowMap.enabled = true;
+
+				container.appendChild( renderer.domElement );
+
+				// controls
+				controls = new OrbitControls( camera, renderer.domElement );
+				controls.listenToKeyEvents( window ); // optional
+				controls.enableDamping = true; // an animation loop is required when either damping or auto-rotation are enabled
+				controls.dampingFactor = 0.05;
+				controls.screenSpacePanning = false;
+				
+				// auto rotation
+				controls.autoRotate = true;
+				controls.autoRotateSpeed = 4;
+
+
+				// stats
+
+				// stats = new Stats();
+				// container.appendChild( stats.dom );
+
+				// resize
+
+				window.addEventListener( 'resize', onWindowResize );
+
+			}
+
+			function addShadowedLight( x, y, z, color, intensity ) {
+
+				const directionalLight = new THREE.DirectionalLight( color, intensity );
+				directionalLight.position.set( x, y, z );
+				scene.add( directionalLight );
+
+				directionalLight.castShadow = true;
+
+				const d = 1;
+				directionalLight.shadow.camera.left = - d;
+				directionalLight.shadow.camera.right = d;
+				directionalLight.shadow.camera.top = d;
+				directionalLight.shadow.camera.bottom = - d;
+
+				directionalLight.shadow.camera.near = 1;
+				directionalLight.shadow.camera.far = 4;
+
+				directionalLight.shadow.mapSize.width = 1024;
+				directionalLight.shadow.mapSize.height = 1024;
+
+				directionalLight.shadow.bias = - 0.001;
+
+			}
+
+			function onWindowResize() {
+
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+
+				renderer.setSize( window.innerWidth, window.innerHeight );
+
+			}
+
+			function animate() {
+
+				requestAnimationFrame( animate );
+
+				render();
+				//stats.update();
+
+			}
+
+			function render() {
+
+				// const timer = Date.now() * 0.0005;
+
+				// camera.position.x = Math.sin( timer ) * 2.5;
+				// camera.position.z = Math.cos( timer ) * 2.5;
+
+				// camera.lookAt( cameraTarget );
+
+				controls.update();
+
+				renderer.render( scene, camera );
+
+			}
+
+		</script>
+	</body>
+</html>
